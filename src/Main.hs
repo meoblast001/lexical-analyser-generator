@@ -1,5 +1,5 @@
 {-
-Copyright (C) 2013 Braden Walters
+Copyright (C) 2015 Braden Walters
 This file is licensed under the MIT Expat License. See LICENSE.txt.
 -}
 
@@ -14,7 +14,7 @@ main = do
   args <- getArgs
   case args of
     [input] -> process input
-    _ -> putStrLn "Please provide an input file name."
+    _ -> error "Please provide an input file name."
 
 process :: FilePath -> IO ()
 process filename = do
