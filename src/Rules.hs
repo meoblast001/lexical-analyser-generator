@@ -6,11 +6,13 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 module Rules (parse) where
 
 import Data.Monoid
+import Text.Parser.LookAhead
 import Text.Trifecta
 
 type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
-data Rule = Class Name [CharacterOrRange] deriving (Show)
+data Rule = Class Name [CharacterOrRange] | Token Name String | Ignore String
+            deriving (Show)
 
 parse :: String -> Either String [Rule]
 parse input =
@@ -20,7 +22,7 @@ parse input =
 
 parseRule :: Parser Rule
 parseRule = do
-  res <- choice [parseClass]
+  res <- choice [parseClass, parseToken, parseIgnore]
   _ <- some newline
   return res
 
@@ -32,6 +34,21 @@ parseClass = do
   classContents <-
     char '[' >> manyTill (choice [try parseCharRange, try parseChar]) (char ']')
   return $ Class name classContents
+
+parseToken :: Parser Rule
+parseToken = do
+  _ <- string "token"
+  _ <- some space
+  name <- manyTill anyChar (some space)
+  regex <- manyTill anyChar (lookAhead newline)
+  return $ Token name regex
+
+parseIgnore :: Parser Rule
+parseIgnore = do
+  _ <- string "ignore"
+  _ <- some space
+  regex <- manyTill anyChar (lookAhead newline)
+  return $ Ignore regex
 
 parseCharRange :: Parser CharacterOrRange
 parseCharRange = do
