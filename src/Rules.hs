@@ -11,7 +11,9 @@ import Text.Trifecta
 
 type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
-data Rule = Class Name [CharacterOrRange] | Token Name String | Ignore String
+data Regex = RxChar Char | RxClass Name | RxMany Regex | RxSome Regex |
+             RxOptional Regex deriving (Show)
+data Rule = Class Name [CharacterOrRange] | Token Name [Regex] | Ignore [Regex]
             deriving (Show)
 
 parse :: String -> Either String [Rule]
@@ -40,14 +42,14 @@ parseToken = do
   _ <- string "token"
   _ <- some space
   name <- manyTill anyChar (some space)
-  regex <- manyTill anyChar (lookAhead newline)
+  regex <- parseRegex
   return $ Token name regex
 
 parseIgnore :: Parser Rule
 parseIgnore = do
   _ <- string "ignore"
   _ <- some space
-  regex <- manyTill anyChar (lookAhead newline)
+  regex <- parseRegex
   return $ Ignore regex
 
 parseCharRange :: Parser CharacterOrRange
@@ -62,3 +64,27 @@ parseChar = do
   _ <- optional (char '\\')
   a <- anyChar
   return $ Character a
+
+parseRegex :: Parser [Regex]
+parseRegex = manyTill (choice [try parseRxClass, parseRxChar])
+                      (lookAhead newline)
+
+parseRxClass :: Parser Regex
+parseRxClass = do
+  classname <- char '[' >> manyTill anyChar (try $ char ']')
+  parseMaybeRxClosure (RxClass classname)
+
+parseRxChar :: Parser Regex
+parseRxChar = do
+  c <- anyChar
+  parseMaybeRxClosure (RxChar c)
+
+parseMaybeRxClosure :: Regex -> Parser Regex
+parseMaybeRxClosure regex =
+  let toRegex rx '*' = RxMany rx
+      toRegex rx '+' = RxSome rx
+      toRegex rx '?' = RxOptional rx
+      toRegex _ _ = error "An error happened that should never happen."
+  in do
+    operator <- optional (try $ choice [char '*', char '+', char '?'])
+    return $ maybe regex (toRegex regex) operator
