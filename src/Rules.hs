@@ -5,6 +5,7 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 
 module Rules (parse) where
 
+import Control.Monad
 import Data.Monoid
 import Text.Parser.LookAhead
 import Text.Trifecta
@@ -18,15 +19,24 @@ data Rule = Class Name [CharacterOrRange] | Token Name [Regex] | Ignore [Regex]
 
 parse :: String -> Either String [Rule]
 parse input =
-  case parseString (some parseRule) mempty input of
+  case parseString parseRules mempty input of
     (Success a) -> Right a
     a -> Left (show a)
+
+parseRules :: Parser [Rule]
+parseRules = skipMany lineEndWhitespace >> some parseRule
 
 parseRule :: Parser Rule
 parseRule = do
   res <- choice [parseClass, parseToken, parseIgnore]
-  _ <- some newline
+  _ <- skipMany lineEndWhitespace
   return res
+
+lineEndWhitespace :: Parser ()
+lineEndWhitespace = many space >> optional comment >> newline >> return ()
+
+comment :: Parser String
+comment = string "//" >> manyTill anyChar (lookAhead newline)
 
 parseClass :: Parser Rule
 parseClass = do
@@ -67,7 +77,7 @@ parseChar = do
 
 parseRegex :: Parser [Regex]
 parseRegex = manyTill (choice [try parseRxClass, parseRxChar])
-                      (lookAhead newline)
+                      (lookAhead $ choice [void comment, void newline])
 
 parseRxClass :: Parser Regex
 parseRxClass = do
