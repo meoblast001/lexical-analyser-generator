@@ -77,7 +77,7 @@ parseChar = do
 
 parseRegex :: Parser [Regex]
 parseRegex = manyTill (choice [try parseRxClass, parseRxChar])
-                      (lookAhead $ choice [void comment, void newline])
+                      (lookAhead lineEndWhitespace)
 
 parseRxClass :: Parser Regex
 parseRxClass = do
@@ -86,6 +86,7 @@ parseRxClass = do
 
 parseRxChar :: Parser Regex
 parseRxChar = do
+  escape <- optional $ char '\\'
   c <- anyChar
   parseMaybeRxClosure (RxChar c)
 
