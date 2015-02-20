@@ -6,6 +6,7 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 module Rules (parse) where
 
 import Control.Monad
+import Data.Functor
 import Data.Monoid
 import Text.Parser.LookAhead
 import Text.Trifecta
@@ -13,8 +14,9 @@ import Text.Trifecta
 type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
 data Regex = RxChar Char | RxClass Name | RxMany Regex | RxSome Regex |
-             RxOptional Regex deriving (Show)
-data Rule = Class Name [CharacterOrRange] | Token Name [Regex] | Ignore [Regex]
+             RxOptional Regex | RxAnd Regex Regex | RxOr Regex Regex
+             deriving (Show)
+data Rule = Class Name [CharacterOrRange] | Token Name Regex | Ignore Regex
             deriving (Show)
 
 parse :: String -> Either String [Rule]
@@ -75,9 +77,13 @@ parseChar = do
   a <- anyChar
   return $ Character a
 
-parseRegex :: Parser [Regex]
-parseRegex = manyTill (choice [try parseRxClass, parseRxChar])
-                      (lookAhead lineEndWhitespace)
+parseRegex :: Parser Regex
+parseRegex =
+  let end = lookAhead lineEndWhitespace
+      -- Array of "or" parts containing arrays of "and" parts.
+      parts = manyTill (manyTill (choice [try parseRxClass, parseRxChar])
+                                 (choice [void $ char '|', void end])) end
+  in foldr1 RxOr <$> (map (foldr1 RxAnd) <$> parts)
 
 parseRxClass :: Parser Regex
 parseRxClass = do
