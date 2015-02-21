@@ -79,12 +79,22 @@ parseChar = do
   return $ Character a
 
 parseRegex :: Parser Regex
-parseRegex =
-  let end = lookAhead lineEndWhitespace
+parseRegex = parseRegexPartsUntil (lookAhead lineEndWhitespace)
+
+parseRegexPartsUntil :: Parser a -> Parser Regex
+parseRegexPartsUntil end =
+  let partTypes = [parseRxParens, parseRxClass, parseRxChar]
       -- Array of "or" parts containing arrays of "and" parts.
-      parts = manyTill (manyTill (choice [try parseRxClass, parseRxChar])
+      parts = manyTill (manyTill (choice partTypes)
                                  (choice [void $ char '|', void end])) end
   in foldr1 RxOr <$> (map (foldr1 RxAnd) <$> parts)
+
+parseRxParens :: Parser Regex
+parseRxParens = do
+  _ <- char '('
+  inside <- parseRegexPartsUntil (lookAhead $ char ')')
+  _ <- char ')'
+  parseMaybeRxClosure inside
 
 parseRxClass :: Parser Regex
 parseRxClass = do
@@ -94,8 +104,15 @@ parseRxClass = do
 parseRxChar :: Parser Regex
 parseRxChar = do
   escape <- optional $ char '\\'
-  c <- anyChar
+  c <- (\c -> maybe c (const $ rxEscapeCode c) escape) <$> anyChar
   parseMaybeRxClosure (RxChar c)
+
+rxEscapeCode :: Char -> Char
+rxEscapeCode 'n' = '\n'
+rxEscapeCode 'r' = '\r'
+rxEscapeCode 'f' = '\f'
+rxEscapeCode 't' = '\t'
+rxEscapeCode a = a
 
 parseMaybeRxClosure :: Regex -> Parser Regex
 parseMaybeRxClosure regex =
