@@ -26,16 +26,17 @@ parse input =
     a -> Left (show a)
 
 parseRules :: Parser [Rule]
-parseRules = skipMany lineEndWhitespace >> some parseRule
+parseRules = skipMany (try lineEndWhitespace) >> some parseRule
 
 parseRule :: Parser Rule
 parseRule = do
   res <- choice [parseClass, parseToken, parseIgnore]
-  _ <- skipMany lineEndWhitespace
+  _ <- skipMany (try lineEndWhitespace)
   return res
 
 lineEndWhitespace :: Parser ()
-lineEndWhitespace = many space >> optional comment >> newline >> return ()
+lineEndWhitespace = many (choice [char ' ', char '\t']) >> optional comment >>
+                    newline >> return ()
 
 comment :: Parser String
 comment = string "//" >> manyTill anyChar (lookAhead newline)
