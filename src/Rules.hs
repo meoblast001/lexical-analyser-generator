@@ -3,7 +3,14 @@ Copyright (C) 2015 Braden Walters
 This file is licensed under the MIT Expat License. See LICENSE.txt.
 -}
 
-module Rules (parse) where
+module Rules
+( Name
+, CharacterOrRange(..)
+, Regex(..)
+, Rule(..)
+, parse
+, showRegexType
+) where
 
 import Control.Monad
 import Data.Functor
@@ -15,7 +22,7 @@ type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
 data Regex = RxChar Char | RxClass Name | RxMany Regex | RxSome Regex |
              RxOptional Regex | RxAnd Regex Regex | RxOr Regex Regex
-             deriving (Show)
+             deriving (Eq, Show)
 data Rule = Class Name [CharacterOrRange] | Token Name Regex | Ignore Regex
             deriving (Show)
 
@@ -123,3 +130,12 @@ parseMaybeRxClosure regex =
   in do
     operator <- optional (try $ choice [char '*', char '+', char '?'])
     return $ maybe regex (toRegex regex) operator
+
+showRegexType :: Regex -> String
+showRegexType rx@(RxMany _) = "*"
+showRegexType rx@(RxSome _) = "+"
+showRegexType rx@(RxOptional _) = "?"
+showRegexType rx@(RxAnd _ _) = "And"
+showRegexType rx@(RxOr _ _) = "Or"
+showRegexType rx@(RxChar a) = "Char: " ++ (show a)
+showRegexType rx@(RxClass a) = "Class: " ++ (show a)
