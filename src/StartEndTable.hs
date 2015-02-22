@@ -8,6 +8,9 @@ module StartEndTable
 , StartEndTableEntry(..)
 , StartEndTable(..)
 , buildStartEndTable
+, isNullable
+, firstRx
+, lastRx
 ) where
 
 import Data.Functor

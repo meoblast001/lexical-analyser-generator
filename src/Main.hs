@@ -5,6 +5,7 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 
 module Main where
 
+import FollowTable
 import Rules
 import StartEndTable
 import System.Environment
@@ -32,9 +33,17 @@ processRules rules = do
 
 printRegexTable :: Rule -> IO ()
 printRegexTable rule@(Token name rx) = do
+  let seTable = buildStartEndTable rx
+      followTable = buildFollowTable seTable
   putStrLn ("Start-end table for \"" ++ name ++ "\":")
-  putStrLn $ (show $ buildStartEndTable rx)
+  putStrLn $ show seTable
+  putStrLn ("Follow table for \"" ++ name ++ "\":")
+  putStrLn $ show followTable
 printRegexTable ignore@(Ignore rx) = do
+  let seTable = buildStartEndTable rx
+      followTable = buildFollowTable seTable
   putStrLn "Start-end table for ignore:"
-  putStrLn $ (show $ buildStartEndTable rx)
+  putStrLn $ show seTable
+  putStrLn "Follow table for ignore:"
+  putStrLn $ show followTable
 printRegexTable _ = do return ()
