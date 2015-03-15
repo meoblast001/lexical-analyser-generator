@@ -19,7 +19,7 @@ import Rules
 
 type Nullable = Bool
 data StartEndTableEntry = StartEndTableEntry Regex Nullable [Regex] [Regex]
-newtype StartEndTable = StartEndTable [StartEndTableEntry]
+newtype StartEndTable = StartEndTable { seTableEntries :: [StartEndTableEntry] }
 
 instance Show StartEndTableEntry where
   show entry@(StartEndTableEntry rx nullable r1 r2) =

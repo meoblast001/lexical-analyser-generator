@@ -7,6 +7,7 @@ module FollowTable
 ( FollowTableEntry(..)
 , FollowTable(..)
 , buildFollowTable
+, searchByKey
 ) where
 
 import Data.Functor
@@ -15,8 +16,11 @@ import Data.Maybe
 import Rules
 import StartEndTable
 
-data FollowTableEntry = FollowTableEntry Regex [Regex]
-newtype FollowTable = FollowTable [FollowTableEntry]
+data FollowTableEntry =
+  FollowTableEntry
+  { followKey :: Regex
+  , followVal :: [Regex] }
+newtype FollowTable = FollowTable { followTableEntries :: [FollowTableEntry] }
 
 instance Show FollowTableEntry where
   show entry@(FollowTableEntry key gotos) =
@@ -66,3 +70,10 @@ mergeEntriesOfOneKey entries =
   let (FollowTableEntry key _) = head entries
       gotos = nub $ concat $ map (\(FollowTableEntry _ g) -> g) entries
   in Just $ FollowTableEntry key gotos
+
+searchByKey :: FollowTable -> Regex -> Maybe FollowTableEntry
+searchByKey (FollowTable followTableEntries) regex =
+  let searchEntries [] _ = Nothing
+      searchEntries (entry@(FollowTableEntry key _):rest) regex =
+        if key == regex then Just entry else searchEntries rest regex
+  in searchEntries followTableEntries regex
