@@ -51,8 +51,8 @@ rxOperatorToEntry rx = StartEndTableEntry rx (isNullable rx) (firstRx rx)
                                           (lastRx rx)
 
 isNullable :: Regex -> Bool
-isNullable rx@(RxChar _) = False
-isNullable rx@(RxClass _) = False
+isNullable rx@(RxChar _ _) = False
+isNullable rx@(RxClass _ _) = False
 isNullable rx@(RxMany _) = True
 isNullable rx@(RxSome r) = isNullable r
 isNullable rx@(RxOptional _) = True
@@ -60,8 +60,8 @@ isNullable rx@(RxAnd r1 r2) = and $ map isNullable [r1, r2]
 isNullable rx@(RxOr r1 r2) = or $ map isNullable [r1, r2]
 
 firstRx :: Regex -> [Regex]
-firstRx rx@(RxChar _) = [rx]
-firstRx rx@(RxClass _) = [rx]
+firstRx rx@(RxChar _ _) = [rx]
+firstRx rx@(RxClass _ _) = [rx]
 firstRx rx@(RxMany r) = firstRx r
 firstRx rx@(RxSome r) = firstRx r
 firstRx rx@(RxOptional r) = firstRx r
@@ -70,8 +70,8 @@ firstRx rx@(RxAnd r1 r2) = if isNullable r1 then union (firstRx r1) (firstRx r2)
 firstRx rx@(RxOr r1 r2) = union (firstRx r1) (firstRx r2)
 
 lastRx :: Regex -> [Regex]
-lastRx rx@(RxChar _) = [rx]
-lastRx rx@(RxClass _) = [rx]
+lastRx rx@(RxChar _ _) = [rx]
+lastRx rx@(RxClass _ _) = [rx]
 lastRx rx@(RxMany r) = lastRx r
 lastRx rx@(RxSome r) = lastRx r
 lastRx rx@(RxOptional r) = lastRx r

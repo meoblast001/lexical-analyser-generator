@@ -18,9 +18,14 @@ import Data.Monoid
 import Text.Parser.LookAhead
 import Text.Trifecta
 
+type Id = Integer
 type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
-data Regex = RxChar Char | RxClass Name | RxMany Regex | RxSome Regex |
+data RegexNoId = RxNChar Char | RxNClass Name | RxNMany RegexNoId |
+                 RxNSome RegexNoId | RxNOptional RegexNoId |
+                 RxNAnd RegexNoId RegexNoId | RxNOr RegexNoId RegexNoId
+                 deriving (Eq, Show)
+data Regex = RxChar Char Id | RxClass Name Id | RxMany Regex | RxSome Regex |
              RxOptional Regex | RxAnd Regex Regex | RxOr Regex Regex
              deriving (Eq, Show)
 data Rule = Class Name [CharacterOrRange] | Token Name Regex | Ignore Regex
@@ -86,33 +91,33 @@ parseChar = do
   return $ Character a
 
 parseRegex :: Parser Regex
-parseRegex = parseRegexPartsUntil (lookAhead lineEndWhitespace)
+parseRegex = (fst . rxNToRx 1) <$> parseRegexPartsUntil (lookAhead lineEndWhitespace)
 
-parseRegexPartsUntil :: Parser a -> Parser Regex
+parseRegexPartsUntil :: Parser a -> Parser RegexNoId
 parseRegexPartsUntil end =
   let partTypes = [parseRxParens, parseRxClass, parseRxChar]
       -- Array of "or" parts containing arrays of "and" parts.
       parts = manyTill (manyTill (choice partTypes)
                                  (choice [void $ char '|', void end])) end
-  in foldr1 RxOr <$> (map (foldr1 RxAnd) <$> parts)
+  in foldr1 RxNOr <$> (map (foldr1 RxNAnd) <$> parts)
 
-parseRxParens :: Parser Regex
+parseRxParens :: Parser RegexNoId
 parseRxParens = do
   _ <- char '('
   inside <- parseRegexPartsUntil (lookAhead $ char ')')
   _ <- char ')'
   parseMaybeRxClosure inside
 
-parseRxClass :: Parser Regex
+parseRxClass :: Parser RegexNoId
 parseRxClass = do
   classname <- char '[' >> manyTill anyChar (try $ char ']')
-  parseMaybeRxClosure (RxClass classname)
+  parseMaybeRxClosure (RxNClass classname)
 
-parseRxChar :: Parser Regex
+parseRxChar :: Parser RegexNoId
 parseRxChar = do
   escape <- optional $ char '\\'
   c <- (\c -> maybe c (const $ rxEscapeCode c) escape) <$> anyChar
-  parseMaybeRxClosure (RxChar c)
+  parseMaybeRxClosure (RxNChar c)
 
 rxEscapeCode :: Char -> Char
 rxEscapeCode 'n' = '\n'
@@ -121,15 +126,36 @@ rxEscapeCode 'f' = '\f'
 rxEscapeCode 't' = '\t'
 rxEscapeCode a = a
 
-parseMaybeRxClosure :: Regex -> Parser Regex
+parseMaybeRxClosure :: RegexNoId -> Parser RegexNoId
 parseMaybeRxClosure regex =
-  let toRegex rx '*' = RxMany rx
-      toRegex rx '+' = RxSome rx
-      toRegex rx '?' = RxOptional rx
+  let toRegex rx '*' = RxNMany rx
+      toRegex rx '+' = RxNSome rx
+      toRegex rx '?' = RxNOptional rx
       toRegex _ _ = error "An error happened that should never happen."
   in do
     operator <- optional (try $ choice [char '*', char '+', char '?'])
     return $ maybe regex (toRegex regex) operator
+
+rxNToRx :: Id -> RegexNoId -> (Regex, Id)
+rxNToRx id (RxNMany r) =
+  let (rNew, newId) = rxNToRx id r
+  in (RxMany rNew, newId)
+rxNToRx id (RxNSome r) =
+  let (rNew, newId) = rxNToRx id r
+  in (RxSome rNew, newId)
+rxNToRx id (RxNOptional r) =
+  let (rNew, newId) = rxNToRx id r
+  in (RxOptional rNew, newId)
+rxNToRx id (RxNAnd r1 r2) =
+  let (r1New, r1NewId) = rxNToRx id r1
+      (r2New, r2NewId) = rxNToRx r1NewId r2
+  in (RxAnd r1New r2New, r2NewId)
+rxNToRx id (RxNOr r1 r2) =
+  let (r1New, r1NewId) = rxNToRx id r1
+      (r2New, r2NewId) = rxNToRx r1NewId r2
+  in (RxOr r1New r2New, r2NewId)
+rxNToRx id (RxNChar a) = (RxChar a id, id + 1)
+rxNToRx id (RxNClass a) = (RxClass a id, id + 1)
 
 showRegexType :: Regex -> String
 showRegexType rx@(RxMany _) = "*"
@@ -137,5 +163,5 @@ showRegexType rx@(RxSome _) = "+"
 showRegexType rx@(RxOptional _) = "?"
 showRegexType rx@(RxAnd _ _) = "And"
 showRegexType rx@(RxOr _ _) = "Or"
-showRegexType rx@(RxChar a) = "Char: " ++ (show a)
-showRegexType rx@(RxClass a) = "Class: " ++ (show a)
+showRegexType rx@(RxChar a id) = "Char (" ++ show id ++ "): " ++ show a
+showRegexType rx@(RxClass a id) = "Class (" ++ show id ++ "): " ++ show a
