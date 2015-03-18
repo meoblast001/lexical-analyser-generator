@@ -21,13 +21,13 @@ import Text.Trifecta
 type Id = Integer
 type Name = String
 data CharacterOrRange = Character Char | Range Char Char deriving (Show)
-data RegexNoId = RxNChar Char | RxNClass Name | RxNMany RegexNoId |
+data RegexNoId = RxNChar Char | RxNClass Name | RxNAnyChar | RxNMany RegexNoId |
                  RxNSome RegexNoId | RxNOptional RegexNoId |
                  RxNAnd RegexNoId RegexNoId | RxNOr RegexNoId RegexNoId
                  deriving (Eq, Show)
-data Regex = RxChar Char Id | RxClass Name Id | RxMany Regex | RxSome Regex |
-             RxOptional Regex | RxAnd Regex Regex | RxOr Regex Regex
-             deriving (Eq, Show)
+data Regex = RxChar Char Id | RxClass Name Id | RxAnyChar Id | RxMany Regex |
+             RxSome Regex | RxOptional Regex | RxAnd Regex Regex |
+             RxOr Regex Regex deriving (Eq, Show)
 data Rule = Class Name [CharacterOrRange] | Token Name Regex | Ignore Regex
             deriving (Show)
 
@@ -91,11 +91,12 @@ parseChar = do
   return $ Character a
 
 parseRegex :: Parser Regex
-parseRegex = (fst . rxNToRx 1) <$> parseRegexPartsUntil (lookAhead lineEndWhitespace)
+parseRegex = (fst . rxNToRx 1) <$>
+             parseRegexPartsUntil (lookAhead lineEndWhitespace)
 
 parseRegexPartsUntil :: Parser a -> Parser RegexNoId
 parseRegexPartsUntil end =
-  let partTypes = [parseRxParens, parseRxClass, parseRxChar]
+  let partTypes = [parseRxParens, parseRxClass, parseRxAnyChar, parseRxChar]
       -- Array of "or" parts containing arrays of "and" parts.
       parts = manyTill (manyTill (choice partTypes)
                                  (choice [void $ char '|', void end])) end
@@ -112,6 +113,9 @@ parseRxClass :: Parser RegexNoId
 parseRxClass = do
   classname <- char '[' >> manyTill anyChar (try $ char ']')
   parseMaybeRxClosure (RxNClass classname)
+
+parseRxAnyChar :: Parser RegexNoId
+parseRxAnyChar = char '.' >> parseMaybeRxClosure RxNAnyChar
 
 parseRxChar :: Parser RegexNoId
 parseRxChar = do
@@ -156,6 +160,7 @@ rxNToRx id (RxNOr r1 r2) =
   in (RxOr r1New r2New, r2NewId)
 rxNToRx id (RxNChar a) = (RxChar a id, id + 1)
 rxNToRx id (RxNClass a) = (RxClass a id, id + 1)
+rxNToRx id (RxNAnyChar) = (RxAnyChar id, id + 1)
 
 showRegexType :: Regex -> String
 showRegexType rx@(RxMany _) = "*"
@@ -165,3 +170,4 @@ showRegexType rx@(RxAnd _ _) = "And"
 showRegexType rx@(RxOr _ _) = "Or"
 showRegexType rx@(RxChar a id) = "Char (" ++ show id ++ "): " ++ show a
 showRegexType rx@(RxClass a id) = "Class (" ++ show id ++ "): " ++ show a
+showRegexType rx@(RxAnyChar id) = "Any char (" ++ show id ++ ")"
