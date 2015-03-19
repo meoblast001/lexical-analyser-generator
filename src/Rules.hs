@@ -27,7 +27,7 @@ data RegexNoId = RxNChar Char | RxNClass Name | RxNAnyChar | RxNMany RegexNoId |
                  deriving (Eq, Show)
 data Regex = RxChar Char Id | RxClass Name Id | RxAnyChar Id | RxMany Regex |
              RxSome Regex | RxOptional Regex | RxAnd Regex Regex |
-             RxOr Regex Regex deriving (Eq, Show)
+             RxOr Regex Regex | RxEnd deriving (Eq, Show)
 data Rule = Class Name [CharacterOrRange] | Token Name Regex | Ignore Regex
             deriving (Show)
 
@@ -91,7 +91,7 @@ parseChar = do
   return $ Character a
 
 parseRegex :: Parser Regex
-parseRegex = (fst . rxNToRx 1) <$>
+parseRegex = withRxEnd <$> (fst . rxNToRx 1) <$>
              parseRegexPartsUntil (lookAhead lineEndWhitespace)
 
 parseRegexPartsUntil :: Parser a -> Parser RegexNoId
@@ -162,6 +162,9 @@ rxNToRx id (RxNChar a) = (RxChar a id, id + 1)
 rxNToRx id (RxNClass a) = (RxClass a id, id + 1)
 rxNToRx id (RxNAnyChar) = (RxAnyChar id, id + 1)
 
+withRxEnd :: Regex -> Regex
+withRxEnd regex = RxAnd regex RxEnd
+
 showRegexType :: Regex -> String
 showRegexType rx@(RxMany _) = "*"
 showRegexType rx@(RxSome _) = "+"
@@ -171,3 +174,4 @@ showRegexType rx@(RxOr _ _) = "Or"
 showRegexType rx@(RxChar a id) = "Char (" ++ show id ++ "): " ++ show a
 showRegexType rx@(RxClass a id) = "Class (" ++ show id ++ "): " ++ show a
 showRegexType rx@(RxAnyChar id) = "Any char (" ++ show id ++ ")"
+showRegexType rx@(RxEnd) = "End"

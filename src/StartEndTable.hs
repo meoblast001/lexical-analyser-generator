@@ -54,6 +54,7 @@ isNullable :: Regex -> Bool
 isNullable rx@(RxChar _ _) = False
 isNullable rx@(RxClass _ _) = False
 isNullable rx@(RxAnyChar _) = False
+isNullable rx@(RxEnd) = False
 isNullable rx@(RxMany _) = True
 isNullable rx@(RxSome r) = isNullable r
 isNullable rx@(RxOptional _) = True
@@ -64,6 +65,7 @@ firstRx :: Regex -> [Regex]
 firstRx rx@(RxChar _ _) = [rx]
 firstRx rx@(RxClass _ _) = [rx]
 firstRx rx@(RxAnyChar _) = [rx]
+firstRx rx@(RxEnd) = [rx]
 firstRx rx@(RxMany r) = firstRx r
 firstRx rx@(RxSome r) = firstRx r
 firstRx rx@(RxOptional r) = firstRx r
@@ -75,6 +77,7 @@ lastRx :: Regex -> [Regex]
 lastRx rx@(RxChar _ _) = [rx]
 lastRx rx@(RxClass _ _) = [rx]
 lastRx rx@(RxAnyChar _) = [rx]
+lastRx rx@(RxEnd) = [rx]
 lastRx rx@(RxMany r) = lastRx r
 lastRx rx@(RxSome r) = lastRx r
 lastRx rx@(RxOptional r) = lastRx r

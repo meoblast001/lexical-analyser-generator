@@ -52,13 +52,17 @@ printRegexTables rule@(Token name rx) = do
   putStrLn $ show seTable
   putStrLn ("Follow table for \"" ++ name ++ "\":")
   putStrLn $ show followTable
-  putStrLn ("Incomplete state table for \"" ++ name ++ "\":")
+  putStrLn ("State table for \"" ++ name ++ "\":")
   mapM_ (putStrLn . show) states >> putStr "\n"
 printRegexTables ignore@(Ignore rx) = do
   let seTable = buildStartEndTable rx
       followTable = buildFollowTable seTable
+      states = stateTableEntries $
+               buildStateTable (head $ seTableEntries seTable) followTable
   putStrLn "Start-end table for ignore:"
   putStrLn $ show seTable
   putStrLn "Follow table for ignore:"
   putStrLn $ show followTable
+  putStrLn ("State table for ignore")
+  mapM_ (putStrLn . show) states >> putStr "\n"
 printRegexTables _ = do return ()

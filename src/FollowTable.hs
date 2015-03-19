@@ -62,7 +62,13 @@ allEntries tables = concat $ map (\table@(FollowTable e) -> e) tables
 groupedEntriesByKey :: [FollowTableEntry] -> [[FollowTableEntry]]
 groupedEntriesByKey entries =
   let groupFunc (FollowTableEntry l _) (FollowTableEntry r _) = l == r
-  in filter (not . null) $ groupBy groupFunc entries
+  in filter (not . null) $ groupUnsortedBy groupFunc entries
+
+groupUnsortedBy :: (a -> a -> Bool) -> [a] -> [[a]]
+groupUnsortedBy f [] = []
+groupUnsortedBy f (cur:rest) =
+  let (same, different) = partition (f cur) rest
+  in (cur:same):(groupUnsortedBy f different)
 
 mergeEntriesOfOneKey :: [FollowTableEntry] -> Maybe FollowTableEntry
 mergeEntriesOfOneKey [] = Nothing
