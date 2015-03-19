@@ -36,13 +36,14 @@ printRegexTables :: Rule -> IO ()
 printRegexTables rule@(Token name rx) = do
   let seTable = buildStartEndTable rx
       followTable = buildFollowTable seTable
-      incompStates = buildIncompEntries (head $ seTableEntries seTable) followTable
+      states = stateTableEntries $
+               buildStateTable (head $ seTableEntries seTable) followTable
   putStrLn ("Start-end table for \"" ++ name ++ "\":")
   putStrLn $ show seTable
   putStrLn ("Follow table for \"" ++ name ++ "\":")
   putStrLn $ show followTable
   putStrLn ("Incomplete state table for \"" ++ name ++ "\":")
-  mapM_ (putStrLn . show) incompStates >> putStr "\n"
+  mapM_ (putStrLn . show) states >> putStr "\n"
 printRegexTables ignore@(Ignore rx) = do
   let seTable = buildStartEndTable rx
       followTable = buildFollowTable seTable

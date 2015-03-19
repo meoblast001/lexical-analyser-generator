@@ -6,9 +6,10 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 module StateTable
 ( StateTableEntry(..)
 , StateTable(..)
-, buildIncompEntries
+, buildStateTable
 ) where
 
+import Data.Functor
 import Data.List
 import Data.Maybe
 import FollowTable
@@ -16,9 +17,36 @@ import Rules
 import StartEndTable
 
 type StateNum = Integer
-data StateTransition = StateTransition Regex StateNum
+data StateTransition = StateTransition Regex StateNum deriving (Show)
 data StateTableEntry = StateTableEntry StateNum [Regex] [StateTransition]
+  deriving (Show)
 newtype StateTable = StateTable { stateTableEntries :: [StateTableEntry] }
+
+buildStateTable :: StartEndTableEntry -> FollowTable -> StateTable
+buildStateTable seTableEntry followTable =
+  let incompEntries = buildIncompEntries seTableEntry followTable
+      compEntries = completeEntries followTable incompEntries
+  in StateTable compEntries
+
+completeEntries :: FollowTable -> [IncompleteEntry] -> [StateTableEntry]
+completeEntries _ [] = []
+completeEntries followTable incompEntries =
+  let incompEntry@(IncompleteEntry _ regexes):rest = incompEntries
+      transitions = catMaybes $ map (buildTransition followTable incompEntries)
+                                    regexes
+  in (completeEntry incompEntry transitions):(completeEntries followTable rest)
+
+buildTransition :: FollowTable -> [IncompleteEntry] -> Regex ->
+                   Maybe StateTransition
+buildTransition followTable incompEntries regex =
+  let follows = followVal <$> searchByKey followTable regex
+      transState = findStateByRegexes incompEntries <$> follows
+      transStateNum = (\(IncompleteEntry sn _) -> sn) <$> transState
+  in StateTransition regex <$> transStateNum
+
+findStateByRegexes :: [IncompleteEntry] -> [Regex] -> IncompleteEntry
+findStateByRegexes (cur@(IncompleteEntry _ curRegexes):rest) regexes =
+  if curRegexes == regexes then cur else findStateByRegexes rest regexes
 
 data IncompleteEntry = IncompleteEntry StateNum [Regex] deriving (Show)
 completeEntry :: IncompleteEntry -> [StateTransition] -> StateTableEntry
