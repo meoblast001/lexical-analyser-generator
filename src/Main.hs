@@ -6,6 +6,7 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 module Main where
 
 import FollowTable
+import Output.CPP
 import Rules
 import StartEndTable
 import StateTable
@@ -17,13 +18,22 @@ main = do
   args <- getArgs
   case args of
     ["info", input] -> displayInfo input
+    [input, outputBase] -> process input outputBase
     _ -> error "Please provide an input file name."
+
+process :: FilePath -> FilePath -> IO ()
+process inputFile outputBase = do
+  fileHandle <- openFile inputFile ReadMode
+  contents <- hGetContents fileHandle
+  either (putStrLn . show) (outputCpp outputBase) (parse contents)
+  hClose fileHandle
 
 displayInfo :: FilePath -> IO ()
 displayInfo filename = do
   fileHandle <- openFile filename ReadMode
   contents <- hGetContents fileHandle
   either (putStrLn . show) displayRulesInfo (parse contents)
+  hClose fileHandle
 
 displayRulesInfo :: [Rule] -> IO ()
 displayRulesInfo rules = do
