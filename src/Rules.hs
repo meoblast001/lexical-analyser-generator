@@ -9,6 +9,7 @@ module Rules
 , Regex(..)
 , Rule(..)
 , parse
+, toEscapeSequence
 , showRegexType
 ) where
 
@@ -129,6 +130,13 @@ rxEscapeCode 'r' = '\r'
 rxEscapeCode 'f' = '\f'
 rxEscapeCode 't' = '\t'
 rxEscapeCode a = a
+
+toEscapeSequence :: Char -> String
+toEscapeSequence '\n' = "\\n"
+toEscapeSequence '\r' = "\\r"
+toEscapeSequence '\f' = "\\f"
+toEscapeSequence '\t' = "\\t"
+toEscapeSequence a = [a]
 
 parseMaybeRxClosure :: RegexNoId -> Parser RegexNoId
 parseMaybeRxClosure regex =

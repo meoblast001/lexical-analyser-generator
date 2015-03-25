@@ -4,9 +4,12 @@ This file is licensed under the MIT Expat License. See LICENSE.txt.
 -}
 
 module StateTable
-( StateTableEntry(..)
+( StateNum
+, StateTransition(..)
+, StateTableEntry(..)
 , StateTable(..)
 , buildStateTable
+, isAcceptingState
 ) where
 
 import Data.Functor
@@ -90,3 +93,9 @@ buildFollowedStates [] _ = []
 buildFollowedStates ((_, True):rest) stNum = buildFollowedStates rest stNum
 buildFollowedStates ((regexes, False):rest) stNum =
   (IncompleteEntry stNum regexes):(buildFollowedStates rest (stNum + 1))
+
+isAcceptingState :: StateTableEntry -> Bool
+isAcceptingState (StateTableEntry _ regexes _) =
+  let isEnd (RxEnd) = True
+      isEnd _ = False
+  in any isEnd regexes
