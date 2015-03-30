@@ -6,10 +6,10 @@ recognises those tokens in strings.
 #### How To Use
   1. Install Cabal 1.10+ and GHC 7.6+.
   2. Run `cabal install`. If you are not in a Cabal sandbox, the executable
-     `LexicalAnalyserGenerator` will be installed to an executable path.
+     `lexical-analyser-generator` will be installed to an executable path.
   3. For some rules file `RULES` and some output base name `OUTPUT_BASE`, run
-     `LexicalAnalyserGenerator RULES OUTPUT_BASE` to generate a lexer for those
-     rules. The lexer files will be named `OUTPUT_BASE.cpp` and
+     `lexical-analyser-generator RULES OUTPUT_BASE` to generate a lexer for
+     those rules. The lexer files will be named `OUTPUT_BASE.cpp` and
      `OUTPUT_BASE.hpp`.
   4. Compile `OUTPUT_BASE.cpp` with your C++ compiler.
 
@@ -44,7 +44,7 @@ is a sequence of regular expression rules of the following form:
 | (a)             | Any string accepted by a                            |
 | a\*             | Zero or more consecutive strings accepted by a      |
 | a+              | One or more consecutive strings accepted by a       |
-| a?              | Either the empty string or any string accepted by r |
+| a?              | Either the empty string or any string accepted by a |
 
 ##### Ignore
 Ignore sequences are skipped before finding the next token. They take the form
@@ -67,3 +67,9 @@ rewindable (cin may not work). `start` rewinds the input to the beginning.
 `next` will skip ignore sequences and find the next token and lexeme, returning
 true on success, false on EOF, and throwing `invalid_argument` if no token is
 found.
+
+#### Info Mode
+If you're interested in the steps that the program takes to build your lexer,
+you can run it in info mode. Run the program using a command in the form:
+`lexical-analyser-generator info RULES`. Information is printed to standard
+output.
