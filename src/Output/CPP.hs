@@ -256,12 +256,12 @@ DFAMatchResult dfaMatch(Rule& rule, istream& input, string& lexeme) {
     current_char = (char) input.get();
   }
   input.seekg(start_pos, input.beg);
-  if (current_char == EOF)
-    return REACHED_EOF;
-  else if (isAccepting(rule.accepting_states, current_state)) {
+  if (isAccepting(rule.accepting_states, current_state)) {
     lexeme = found_chars;
     return MATCHED;
-  } else {
+  } else if (current_char == EOF)
+    return REACHED_EOF;
+  else {
     return FAILED;
   }
 }
@@ -275,6 +275,7 @@ void LexicalAnalyzer::start()
 
 bool LexicalAnalyzer::next(Token& t, string& lexeme) {
   string current_lexeme;
+  bool reached_eof = false;
 
   do {
     lexeme = "";
@@ -287,12 +288,15 @@ bool LexicalAnalyzer::next(Token& t, string& lexeme) {
         case FAILED:
           break;
         case REACHED_EOF:
-          return false;
+          reached_eof = true;
       }
       current_lexeme = "";
     }
     if (lexeme.length() > 0)
       input.seekg(streamoff(lexeme.length()), input.cur);
+    else if (reached_eof)
+      return false;
+    reached_eof = false;
   } while (lexeme.length() > 0);
 
   for (int i = 0; !rules_tokens[i].end; ++i) {
@@ -306,14 +310,17 @@ bool LexicalAnalyzer::next(Token& t, string& lexeme) {
       case FAILED:
         break;
       case REACHED_EOF:
-        return false;
+        reached_eof = true;
     }
   }
   if (lexeme.length() > 0) {
     input.seekg(streamoff(lexeme.length()), input.cur);
     return true;
-  } else
+  } else {
+    if (reached_eof)
+      return false;
     throw invalid_argument("Could not match a token in stream.");
+  }
 }
 |]
 
