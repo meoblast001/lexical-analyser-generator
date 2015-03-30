@@ -38,6 +38,7 @@ outputHeader fileName rules =
 includeHeader :: FilePath -> String
 includeHeader headerPath = [r|
 #include <cstdio>
+#include <stdexcept>
 #include "|] ++ headerPath ++ [r|"
 |]
 
@@ -197,7 +198,13 @@ bool isAccepting(int accepting[], int current_state) {
   return false;
 }
 
-bool dfaMatch(Rule& rule, istream& input, string& lexeme) {
+enum DFAMatchResult {
+  MATCHED,
+  FAILED,
+  REACHED_EOF,
+};
+
+DFAMatchResult dfaMatch(Rule& rule, istream& input, string& lexeme) {
   streampos start_pos = input.tellg();
   int current_state = 0;
   char current_char = (char) input.get();
@@ -249,11 +256,13 @@ bool dfaMatch(Rule& rule, istream& input, string& lexeme) {
     current_char = (char) input.get();
   }
   input.seekg(start_pos, input.beg);
-  if (isAccepting(rule.accepting_states, current_state)) {
+  if (current_char == EOF)
+    return REACHED_EOF;
+  else if (isAccepting(rule.accepting_states, current_state)) {
     lexeme = found_chars;
-    return true;
+    return MATCHED;
   } else {
-    return false;
+    return FAILED;
   }
 }
 
@@ -270,9 +279,16 @@ bool LexicalAnalyzer::next(Token& t, string& lexeme) {
   do {
     lexeme = "";
     for (int i = 0; !rules_ignores[i].end; ++i) {
-      if (dfaMatch(rules_ignores[i], input, current_lexeme))
-        if (current_lexeme.length() > lexeme.length())
-          lexeme = current_lexeme;
+      switch (dfaMatch(rules_ignores[i], input, current_lexeme)) {
+        case MATCHED:
+          if (current_lexeme.length() > lexeme.length())
+            lexeme = current_lexeme;
+          break;
+        case FAILED:
+          break;
+        case REACHED_EOF:
+          return false;
+      }
       current_lexeme = "";
     }
     if (lexeme.length() > 0)
@@ -280,18 +296,24 @@ bool LexicalAnalyzer::next(Token& t, string& lexeme) {
   } while (lexeme.length() > 0);
 
   for (int i = 0; !rules_tokens[i].end; ++i) {
-    if (dfaMatch(rules_tokens[i], input, current_lexeme)) {
-      if (current_lexeme.length() > lexeme.length()) {
-        t = rules_tokens[i].token;
-        lexeme = current_lexeme;
-      }
+    switch (dfaMatch(rules_tokens[i], input, current_lexeme)) {
+      case MATCHED:
+        cout << "Matched with lexeme: " << current_lexeme << endl;
+        if (current_lexeme.length() > lexeme.length()) {
+          t = rules_tokens[i].token;
+          lexeme = current_lexeme;
+        }
+      case FAILED:
+        break;
+      case REACHED_EOF:
+        return false;
     }
   }
   if (lexeme.length() > 0) {
     input.seekg(streamoff(lexeme.length()), input.cur);
     return true;
   } else
-    return false;
+    throw invalid_argument("Could not match a token in stream.");
 }
 |]
 
