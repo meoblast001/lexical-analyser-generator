@@ -302,7 +302,6 @@ bool LexicalAnalyzer::next(Token& t, string& lexeme) {
   for (int i = 0; !rules_tokens[i].end; ++i) {
     switch (dfaMatch(rules_tokens[i], input, current_lexeme)) {
       case MATCHED:
-        cout << "Matched with lexeme: " << current_lexeme << endl;
         if (current_lexeme.length() > lexeme.length()) {
           t = rules_tokens[i].token;
           lexeme = current_lexeme;
