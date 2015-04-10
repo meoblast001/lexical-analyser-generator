@@ -21,12 +21,16 @@ main = do
     [input, outputBase] -> process input outputBase
     _ -> error "Please provide an input file name."
 
+-- Generate C++ code from rules file.
+
 process :: FilePath -> FilePath -> IO ()
 process inputFile outputBase = do
   fileHandle <- openFile inputFile ReadMode
   contents <- hGetContents fileHandle
   either (putStrLn . show) (outputCpp outputBase) (parse contents)
   hClose fileHandle
+
+-- Display information about the process of creating the DFA for a rules file.
 
 displayInfo :: FilePath -> IO ()
 displayInfo filename = do
